@@ -14,10 +14,10 @@ module MyList{
 			}
 		}
 
-		hidden var _rankMethod as Method(previous as Object, item as Object, next as Object) as Numeric;
+		hidden var _rankMethod as Method(previous as Object, item as Object, next as Object) as Numeric|Null;
 		hidden var _lowestRanked as RankedItem?;
 
-		function initialize(rankMethod as Method(previous as Object, current as Object, next as Object) as Numeric){
+		function initialize(rankMethod as Method(previous as Object, current as Object, next as Object) as Numeric|Null){
 			List.initialize();
 			_rankMethod = rankMethod;
 		}
@@ -130,10 +130,10 @@ module MyList{
 			}
 		}
 
-		hidden function getRankValues() as Array<Numeric>{
+		hidden function getRankValues() as Array<Numeric|Null>{
 			// collect ranking values for evaluation
 			var item = _lowestRanked;
-			var array = [] as Array<Numeric>;
+			var array = [] as Array<Numeric|Null>;
 			while(item != null){
 				array.add(item.rankValue);
 				item = item.higherRanked;
@@ -145,7 +145,7 @@ module MyList{
 			// System.println(Lang.format("before filter: $1$", [getRankValues()]));
 			while(_lowestRanked != null && size() > maxSize){
 				// remove the item with the lowest rank untill the size is within the range
-				deleteItem(_lowestRanked);
+				deleteItem(_lowestRanked as RankedItem);
 			}
 			// System.println(Lang.format("after filter: $1$", [getRankValues()]));
 		}
