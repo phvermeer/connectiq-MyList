@@ -4,6 +4,9 @@ import Toybox.System;
 module MyList{
 	class FilteredList extends List{
 		// filter based upon evaluation of each item with their relation to the predecescor and successor
+		typedef IRankable as interface{
+			function getRankValue(predecessor as Object, successor as Object) as Numeric;
+		};
 
 		class RankedItem extends List.ListItem{
 			var rankValue as Numeric?;
@@ -14,31 +17,23 @@ module MyList{
 			}
 		}
 
-		hidden var _rankMethod as Method(previous as Object, item as Object, next as Object) as Numeric|Null;
 		hidden var _lowestRanked as RankedItem?;
 
-		function initialize(rankMethod as Method(previous as Object, current as Object, next as Object) as Numeric|Null){
+		function initialize(){
 			List.initialize();
-			_rankMethod = rankMethod;
 		}
 
 		protected function createItem(object as Object) as List.ListItem{
 			return new RankedItem(object) as List.ListItem;
 		}
-
+		
 		hidden function updateRanking(item as RankedItem) as Void{
 			var newRankValue = null;
 			var previous = item.previous;
 			var next = item.next;
-			if(previous != null){
-				if(next != null){
-					// calculate
-					newRankValue = _rankMethod.invoke(
-						previous.object,
-						item.object,
-						next.object
-					) as Numeric;
-				}
+			if(item != null && previous != null && next != null){
+				// calculate
+				newRankValue = (item.object as IRankable).getRankValue(previous.object, next.object);
 			}
 			if(newRankValue != item.rankValue){
 				item.rankValue = newRankValue;
@@ -101,8 +96,16 @@ module MyList{
 		}
 
 		// override functions to recalculate rankValues
-		protected function insertItem(item as List.ListItem, ref as List.ListItem?) as Void{
-			List.insertItem(item, ref);
+		protected function _add(item as List.ListItem, ref as List.ListItem?) as Void{
+			List._add(item, ref);
+			if(item.object == null){
+				// previous or next also null => skip insert
+				var previous = (item.previous != null) ? (item.previous as List.ListItem).object : null;
+				var next = (item.next != null) ? (item.next as List.ListItem).object : null;
+				if(previous == null || next == null){
+					List._remove(item);
+				}
+			}
 
 			// Update the rank values
 			updateRanking(item as RankedItem);
@@ -113,12 +116,12 @@ module MyList{
 				updateRanking(item.next as RankedItem);
 			}
 		}
-		protected function deleteItem(item as List.ListItem) as Void{
+		protected function _remove(item as List.ListItem) as Void{
 			// remove from list
 			var item_ = item as RankedItem;
 			var previous = item_.previous;
 			var next = item_.next;
-			List.deleteItem(item_);
+			List._remove(item_);
 
 			// Update the rank values (keep in mind that item is deleted and has no relations to prev and next)
 			updateRanking(item_);
@@ -141,23 +144,11 @@ module MyList{
 			return array;
 		}
 
-		function filterSize(maxSize as Number) as Void{
+		public function filterSize(maxSize as Number) as Void{
 			// System.println(Lang.format("before filter: $1$", [getRankValues()]));
 			while(_lowestRanked != null && size() > maxSize){
 				// remove the item with the lowest rank untill the size is within the range
-				deleteItem(_lowestRanked as RankedItem);
-			}
-			// System.println(Lang.format("after filter: $1$", [getRankValues()]));
-		}
-
-		public function filterRanking(minRankValue as Float) as Void{
-			while(_lowestRanked != null){
-				if(_lowestRanked.rankValue as Float < minRankValue){
-					// remove the item with the lowest rank as long as this rank is lower than the minRanking
-					deleteItem(_lowestRanked);
-				}else{
-					break;
-				}
+				_remove(_lowestRanked as RankedItem);
 			}
 		}
 	}
