@@ -98,7 +98,7 @@ module MyList{
 			}
 			return false;
 		}
-		public function removeAll() as Void{
+		public function clear() as Void{
 			while(_first != null){
 				_remove(_first);
 			}

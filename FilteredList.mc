@@ -26,7 +26,7 @@ module MyList{
 		protected function createItem(object as Object) as List.ListItem{
 			return new RankedItem(object) as List.ListItem;
 		}
-		
+
 		hidden function updateRanking(item as RankedItem) as Void{
 			var newRankValue = null;
 			var previous = item.previous;
@@ -95,7 +95,6 @@ module MyList{
 			}
 		}
 
-		// override functions to recalculate rankValues
 		protected function _add(item as List.ListItem, ref as List.ListItem?) as Void{
 			List._add(item, ref);
 			if(item.object == null){
