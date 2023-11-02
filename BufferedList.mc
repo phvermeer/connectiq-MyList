@@ -48,7 +48,6 @@ module MyList{
 
                     // add item to final destination
                     FilteredList.add(object);
-                    System.print(".");
                     
                     // limit number of processed new items
                     counter++;
@@ -61,7 +60,6 @@ module MyList{
             if(size() <= maxCount && fifo.size() == 0){
                 timer.stop();
                 loading = false;
-                System.println(Lang.format("list filtered to size $1$", [size()]));
                 if(onReady != null){
                     onReady.invoke();
                 }
