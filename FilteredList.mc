@@ -88,10 +88,12 @@ module MyList{
 
 		public function refreshRanking() as Void{
 			// this function will update all rankValues and rankingOrders
-			var item = _first;
+			first();
+			var item = current();
 			while(item != null){
 				updateRanking(item as RankedItem);
-				item = item.next;
+				next();
+				item = current();
 			}
 		}
 

@@ -11,10 +11,10 @@ module MyList{
 			}
 		}
 
-		hidden var _size as Number = 0;
-		hidden var _current as ListItem?;
-		hidden var _first as ListItem?;
-		hidden var _last as ListItem?;
+		private var _size as Number = 0;
+		private var _current as ListItem?;
+		private var _first as ListItem?;
+		private var _last as ListItem?;
 
 		protected function createItem(object as Object) as ListItem{
 			return new ListItem(object);
@@ -103,31 +103,28 @@ module MyList{
 				_remove(_first);
 			}
 		}
-		public function current() as Object?{
-			if(_current != null){
-				return _current.object;
-			}
-			return null;
+		public function current() as Object|Null{
+			return (_current != null) ? _current.object : null;
 		}
-		public function previous() as Boolean{
+		public function previous() as Object|Null{
 			if(_current != null){
 				_current = _current.previous;
 			}
-			return _current != null;
+			return (_current != null) ? _current.object : null;
 		}
-		public function next() as Boolean{
+		public function next() as Object|Null{
 			if(_current != null){
 				_current = _current.next;
 			}
-			return _current != null;
+			return (_current != null) ? _current.object : null;
 		}
-		public function first() as Boolean{
+		public function first() as Object|Null{
 			_current = _first;
-			return _current != null;
+			return (_current != null) ? _current.object : null;
 		}
-		public function last() as Boolean{
+		public function last() as Object|Null{
 			_current = _last;
-			return _current != null;
+			return (_current != null) ? _current.object : null;
 		}
 		public function toArray() as Array<Object>{
 			var array = new [_size] as Array<Object>;

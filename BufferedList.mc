@@ -20,7 +20,7 @@ module MyList{
             :onReady as Method() as Void,
         }){
             FilteredList.initialize();
-            interval = options.hasKey(:interval) ? options.get(:interval) as Number : 50;
+            interval = options.hasKey(:interval) ? options.get(:interval) as Number : 200;
             batchCount = options.hasKey(:batchCount) ? options.get(:batchCount) as Number : 40;
             maxCount = options.hasKey(:maxCount) ? options.get(:maxCount) as Number : 60;
             reducedCount = options.hasKey(:reducedCount) ? options.get(:reducedCount) as Number : (maxCount * 3 / 4).toNumber();
@@ -41,9 +41,8 @@ module MyList{
                 filterSize(reducedCount);
             }else{
                 var counter = 0;
-                while(fifo.first()){
-                    // get item from fifo
-                    var object = fifo.current() as Object;
+                var object = fifo.first();
+                while(object != null){
                     fifo.remove();
 
                     // add item to final destination
@@ -51,9 +50,11 @@ module MyList{
                     
                     // limit number of processed new items
                     counter++;
-                    if(counter>batchCount){
+                    if(counter > batchCount){
                         break;
                     }
+                    // get next item from fifo
+                    object = fifo.first();
                 }
             }
             // check if timer can be stopped
@@ -64,6 +65,10 @@ module MyList{
                     onReady.invoke();
                 }
             }
+        }
+
+        function cancel() as Void{
+            timer.stop();
         }
 
         function isLoading() as Boolean{
