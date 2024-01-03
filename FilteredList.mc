@@ -8,12 +8,25 @@ module MyList{
 			function getRankValue(predecessor as Object, successor as Object) as Numeric;
 		};
 
-		class RankedItem extends List.ListItem{
+		class RankedItem{
+			var object as Object;
 			var rankValue as Numeric?;
-			var lowerRanked as RankedItem?;
-			var higherRanked as RankedItem?;
+			hidden var lowerRanked as WeakReference?;
+			hidden var higherRanked as WeakReference?;
 			function initialize(object as Object){
-				ListItem.initialize(object);
+				self.object = object;
+			}
+			function getLowerRanked() as RankedItem?{
+				return (lowerRanked != null) ? lowerRanked.get() as RankedItem? : null;
+			}
+			function getHigherRanked() as RankedItem?{
+				return (higherRanked != null) ? higherRanked.get() as RankedItem? : null;
+			}
+			function setLowerRanked(item as RankedItem?) as Void{
+				lowerRanked = (item != null) ? item.weak() : null;
+			}
+			function setHigherRanked(item as RankedItem?) as Void{
+				higherRanked = (item != null) ? item.weak() : null;
 			}
 		}
 
@@ -23,11 +36,11 @@ module MyList{
 			List.initialize();
 		}
 
-		protected function createItem(object as Object) as List.ListItem{
+		protected function createItem(object as Object) as RankedItem{
 			if((object as IRankable) has :getRankValue){
-				return new RankedItem(object) as List.ListItem;
+				return new RankedItem(object);
 			}else{
-				throw new InvalidValueException("object should have the function getRankValue()");
+				throw new InvalidValueException("object should have implemented the function getRankValue()");
 			}
 		}
 
@@ -39,24 +52,24 @@ module MyList{
 			}
 			if(newRankValue != current.rankValue){
 				current.rankValue = newRankValue;
-				var lower = current.lowerRanked;
-				var higher = current.higherRanked;
+				var lower = current.getLowerRanked();
+				var higher = current.getHigherRanked();
 
 				// remove from current ranking order
 				if(lower != null){
-					lower.higherRanked = higher;
+					lower.setHigherRanked(higher);
 				}
 				if(higher != null){
-					higher.lowerRanked = lower;
+					higher.setLowerRanked(lower);
 				}
 				if(_lowestRanked == current){
-					_lowestRanked = current.higherRanked;
+					_lowestRanked = current.getHigherRanked();
 				}
 
 				if(newRankValue == null){
 					// if no ranking value is available, then exclude from the ranking
-					current.lowerRanked = null;
-					current.higherRanked = null;
+					current.setLowerRanked(null);
+					current.setHigherRanked(null);
 				}else{
 					// search for the new ranking position (start at lowest)
 					if(_lowestRanked != null){
@@ -67,21 +80,21 @@ module MyList{
 								break;
 							}
 							lower = higher;
-							higher = higher.higherRanked;
+							higher = higher.getHigherRanked();
 						}
 						// (re)insert on the new ranking position
-						current.lowerRanked = lower;
-						current.higherRanked = higher;
+						current.setLowerRanked(lower);
+						current.setHigherRanked(higher);
 						if(lower != null){
-							lower.higherRanked = current;
+							lower.setHigherRanked(current);
 						}
 						if(higher != null){
-							higher.lowerRanked = current;
+							higher.setLowerRanked(current);
 						}
 					}
 
 					// update lowest ranked
-					if(current.lowerRanked == null){
+					if(current.getLowerRanked() == null){
 						_lowestRanked = current;
 					}
 				}
@@ -105,44 +118,28 @@ module MyList{
 			}
 		}
 
-		protected function _add(item as List.ListItem, index as Number) as Void{
-			List._add(item, index);
+		public function add(object as Object) as Void{
+			var item = createItem(object);
+			List.add(item);
 
 			// Update the rank values
 			var count = _items.size();
-			var current = item as RankedItem;
-			var previous = (index > 0) ? _items[index-1] as RankedItem : null;
-			var next = (index < count-1) ? _items[index+1] as RankedItem : null;
+			if(count >= 3){
+				var previous = _items[count-2] as RankedItem;
+				var prevprev = _items[count-3] as RankedItem;
 
-			updateRanking(previous, current, next);
-			if(previous != null){
-				var prevprev = (index > 1) ? _items[index-2] as RankedItem: null;
-				updateRanking(prevprev, previous, current);
-			}
-			if(next != null){
-				var nextnext = (index < count-2) ? _items[index+2] as RankedItem : null;
-				updateRanking(current, next, nextnext);
+				updateRanking(prevprev, previous, item);
 			}
 		}
 
-		protected function _remove(index as Number|Null, item as List.ListItem|Null) as Boolean{
-			// remove from list
-			if(index == null && item != null){
-				index = _items.indexOf(item);
-			}else if(item == null && index != null){
-				item = _items[index];
-			}
-			var removed = List._remove(index, item);
-
-
-			if(removed && index != null){
+		protected function _remove(index as Number, item as RankedItem) as Boolean{
+			if(_items[index].equals(item) && _items.remove(item)){
 				var count = _items.size();
-				var old = item as RankedItem;
 				var previous = (index > 0) ? _items[index-1] as RankedItem : null;
 				var next = (index < count) ? _items[index] as RankedItem : null;
 
 				// Update the rank values (keep in mind that item is deleted and has no relations to prev and next)
-				updateRanking(null, old, null);
+				updateRanking(null, item, null);
 				if(previous != null){
 					var prevprev = (index > 1) ? _items[index-2] as RankedItem: null;
 					updateRanking(prevprev, previous, next);
@@ -151,28 +148,54 @@ module MyList{
 					var nextnext = (index < count-2) ? _items[index+2] as RankedItem : null;
 					updateRanking(previous, next, nextnext);
 				}
+				return true;
 			}
-
-			return removed;
+			return false;
 		}
-
+		public function remove() as Boolean{
+			var item = _items[_index] as RankedItem;
+			return _remove(_index, item);
+		}
+		protected function _removeItem(item as RankedItem) as Boolean{
+			var index = _items.indexOf(item);
+			return _remove(index, item);
+		}
+/*
 		hidden function getRankValues() as Array<Numeric|Null>{
 			// collect ranking values for evaluation
 			var item = _lowestRanked;
 			var array = [] as Array<Numeric|Null>;
 			while(item != null){
 				array.add(item.rankValue);
-				item = item.higherRanked;
+				item = item.getHigherRanked();
 			}
 			return array;
 		}
-
+*/
 		public function filterSize(maxSize as Number) as Void{
 			// System.println(Lang.format("before filter: $1$", [getRankValues()]));
-			while(_lowestRanked != null && size() > maxSize){
+			while(size() > maxSize && _lowestRanked != null){
 				// remove the item with the lowest rank untill the size is within the range
-				_remove(null, _lowestRanked as RankedItem);
+				_removeItem(_lowestRanked);
 			}
+		}
+
+		// override function to return the correct object
+		public function first() as Object|Null{
+			var item = List.first();
+			return (item != null) ? (item as RankedItem).object : null;
+		}
+		public function last() as Object|Null{
+			var item = List.last();
+			return (item != null) ? (item as RankedItem).object : null;
+		}
+		public function next() as Object|Null{
+			var item = List.next();
+			return (item != null) ? (item as RankedItem).object : null;
+		}
+		public function previous() as Object|Null{
+			var item = List.previous();
+			return (item != null) ? (item as RankedItem).object : null;
 		}
 	}
 }
