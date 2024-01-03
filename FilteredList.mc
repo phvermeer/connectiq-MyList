@@ -160,20 +160,8 @@ module MyList{
 			var index = _items.indexOf(item);
 			return _remove(index, item);
 		}
-/*
-		hidden function getRankValues() as Array<Numeric|Null>{
-			// collect ranking values for evaluation
-			var item = _lowestRanked;
-			var array = [] as Array<Numeric|Null>;
-			while(item != null){
-				array.add(item.rankValue);
-				item = item.getHigherRanked();
-			}
-			return array;
-		}
-*/
+
 		public function filterSize(maxSize as Number) as Void{
-			// System.println(Lang.format("before filter: $1$", [getRankValues()]));
 			while(size() > maxSize && _lowestRanked != null){
 				// remove the item with the lowest rank untill the size is within the range
 				_removeItem(_lowestRanked);
