@@ -24,21 +24,23 @@ module MyList{
 		}
 
 		protected function createItem(object as Object) as List.ListItem{
-			return new RankedItem(object) as List.ListItem;
+			if((object as IRankable) has :getRankValue){
+				return new RankedItem(object) as List.ListItem;
+			}else{
+				throw new InvalidValueException("object should have the function getRankValue()");
+			}
 		}
 
-		hidden function updateRanking(item as RankedItem) as Void{
+		hidden function updateRanking(previous as RankedItem|Null, current as RankedItem, next as RankedItem|Null) as Void{
 			var newRankValue = null;
-			var previous = item.previous;
-			var next = item.next;
-			if(item != null && previous != null && next != null){
+			if(current != null && previous != null && next != null){
 				// calculate
-				newRankValue = (item.object as IRankable).getRankValue(previous.object, next.object);
+				newRankValue = (current.object as IRankable).getRankValue(previous.object, next.object);
 			}
-			if(newRankValue != item.rankValue){
-				item.rankValue = newRankValue;
-				var lower = item.lowerRanked;
-				var higher = item.higherRanked;
+			if(newRankValue != current.rankValue){
+				current.rankValue = newRankValue;
+				var lower = current.lowerRanked;
+				var higher = current.higherRanked;
 
 				// remove from current ranking order
 				if(lower != null){
@@ -47,14 +49,14 @@ module MyList{
 				if(higher != null){
 					higher.lowerRanked = lower;
 				}
-				if(_lowestRanked == item){
-					_lowestRanked = item.higherRanked;
+				if(_lowestRanked == current){
+					_lowestRanked = current.higherRanked;
 				}
 
 				if(newRankValue == null){
 					// if no ranking value is available, then exclude from the ranking
-					item.lowerRanked = null;
-					item.higherRanked = null;
+					current.lowerRanked = null;
+					current.higherRanked = null;
 				}else{
 					// search for the new ranking position (start at lowest)
 					if(_lowestRanked != null){
@@ -68,19 +70,19 @@ module MyList{
 							higher = higher.higherRanked;
 						}
 						// (re)insert on the new ranking position
-						item.lowerRanked = lower;
-						item.higherRanked = higher;
+						current.lowerRanked = lower;
+						current.higherRanked = higher;
 						if(lower != null){
-							lower.higherRanked = item;
+							lower.higherRanked = current;
 						}
 						if(higher != null){
-							higher.lowerRanked = item;
+							higher.lowerRanked = current;
 						}
 					}
 
 					// update lowest ranked
-					if(item.lowerRanked == null){
-						_lowestRanked = item;
+					if(current.lowerRanked == null){
+						_lowestRanked = current;
 					}
 				}
 			}
@@ -88,50 +90,70 @@ module MyList{
 
 		public function refreshRanking() as Void{
 			// this function will update all rankValues and rankingOrders
-			first();
-			var item = current();
-			while(item != null){
-				updateRanking(item as RankedItem);
-				next();
-				item = current();
+			var count = _items.size();
+			if(count >= 2){
+				var previous = _items[0] as RankedItem;
+				var current = _items[1] as RankedItem;
+				updateRanking(null, previous, current);
+				for(var i=2; i<count; i++){
+					var next = _items[i] as RankedItem;
+					updateRanking(previous, current, next);
+					previous = current;
+					current = next;
+				}
+				updateRanking(previous, current, null);
 			}
 		}
 
-		protected function _add(item as List.ListItem, ref as List.ListItem?) as Void{
-			List._add(item, ref);
-			if(item.object == null){
-				// previous or next also null => skip insert
-				var previous = (item.previous != null) ? (item.previous as List.ListItem).object : null;
-				var next = (item.next != null) ? (item.next as List.ListItem).object : null;
-				if(previous == null || next == null){
-					List._remove(item);
+		protected function _add(item as List.ListItem, index as Number) as Void{
+			List._add(item, index);
+
+			// Update the rank values
+			var count = _items.size();
+			var current = item as RankedItem;
+			var previous = (index > 0) ? _items[index-1] as RankedItem : null;
+			var next = (index < count-1) ? _items[index+1] as RankedItem : null;
+
+			updateRanking(previous, current, next);
+			if(previous != null){
+				var prevprev = (index > 1) ? _items[index-2] as RankedItem: null;
+				updateRanking(prevprev, previous, current);
+			}
+			if(next != null){
+				var nextnext = (index < count-2) ? _items[index+2] as RankedItem : null;
+				updateRanking(current, next, nextnext);
+			}
+		}
+
+		protected function _remove(index as Number|Null, item as List.ListItem|Null) as Boolean{
+			// remove from list
+			if(index == null && item != null){
+				index = _items.indexOf(item);
+			}else if(item == null && index != null){
+				item = _items[index];
+			}
+			var removed = List._remove(index, item);
+
+
+			if(removed && index != null){
+				var count = _items.size();
+				var old = item as RankedItem;
+				var previous = (index > 0) ? _items[index-1] as RankedItem : null;
+				var next = (index < count) ? _items[index] as RankedItem : null;
+
+				// Update the rank values (keep in mind that item is deleted and has no relations to prev and next)
+				updateRanking(null, old, null);
+				if(previous != null){
+					var prevprev = (index > 1) ? _items[index-2] as RankedItem: null;
+					updateRanking(prevprev, previous, next);
+				}
+				if(next != null){
+					var nextnext = (index < count-2) ? _items[index+2] as RankedItem : null;
+					updateRanking(previous, next, nextnext);
 				}
 			}
 
-			// Update the rank values
-			updateRanking(item as RankedItem);
-			if(item.previous != null){
-				updateRanking(item.previous as RankedItem);
-			}
-			if(item.next != null){
-				updateRanking(item.next as RankedItem);
-			}
-		}
-		protected function _remove(item as List.ListItem) as Void{
-			// remove from list
-			var item_ = item as RankedItem;
-			var previous = item_.previous;
-			var next = item_.next;
-			List._remove(item_);
-
-			// Update the rank values (keep in mind that item is deleted and has no relations to prev and next)
-			updateRanking(item_);
-			if(previous != null){
-				updateRanking(previous as RankedItem);
-			}
-			if(next != null){
-				updateRanking(next as RankedItem);
-			}
+			return removed;
 		}
 
 		hidden function getRankValues() as Array<Numeric|Null>{
@@ -149,7 +171,7 @@ module MyList{
 			// System.println(Lang.format("before filter: $1$", [getRankValues()]));
 			while(_lowestRanked != null && size() > maxSize){
 				// remove the item with the lowest rank untill the size is within the range
-				_remove(_lowestRanked as RankedItem);
+				_remove(null, _lowestRanked as RankedItem);
 			}
 		}
 	}

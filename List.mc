@@ -3,146 +3,120 @@ import Toybox.Lang;
 module MyList{
 	class List{
 		class ListItem{
-			var previous as ListItem?;
-			var next as ListItem?;
 			var object as Object;
 			function initialize(object as Object){
 				self.object = object;
 			}
 		}
 
-		private var _size as Number = 0;
-		private var _current as ListItem?;
-		private var _first as ListItem?;
-		private var _last as ListItem?;
+		protected var _index as Number = -1;
+		protected var _items as Array<ListItem> = [] as Array<ListItem>;
 
 		protected function createItem(object as Object) as ListItem{
 			return new ListItem(object);
 		}
-		protected function _add(item as ListItem, ref as ListItem?) as Void{
-			// inserts an item behind the ref item. if ref==null, the item is inserted at beginning
-			if(_first!=null){
-				if(ref!=null){
-					item.previous = ref;
-					var next = ref.next;
-					if(next != null){
-						next.previous = item;
-						item.next = next;
-					}else{
-						_last = item;
-					}
-					ref.next = item;
-				}else{
-					_first.previous = item;
-					item.next = _first;
-					var next = _first.next;
-					if(next != null){
-						next.previous = item;
-					}
-					_first = item;
-				}
-			}else{
-				//first item
-				_first = item;
-				_last = item;
-				_current = item;
+
+		protected function _add(item as ListItem, index as Number) as Void{
+			var count = _items.size();
+			if(index < 0 || index > count){
+				throw new InvalidValueException(Lang.format("index out of bounds (index=)", [index]));
 			}
-			_size++;
+			if(index >= count-1){
+				// add at the end
+				_items.add(item);
+			}else if(index < 0){
+				// insert at the beginning
+				var items = [item] as Array<ListItem>;
+				items.addAll(_items);
+				_items = items;
+			}else{
+				// insert
+				var items = _items.slice(null, index);
+				items.add(item);
+				items.addAll(_items.slice(index, null));
+				_items = items;
+			}
 		}
-		protected function _remove(item as ListItem) as Void{
-			// break links from other items in the list
-			var previous = item.previous;
-			var next = item.next;
-
-			if(previous != null && next != null){
-				previous.next = next;
-				next.previous = previous;
-			}else if(previous != null){
-				previous.next = null;
-				_last = previous;
-			}else if(next != null){
-				next.previous = null;
-				_first = next;
-			}else{
-				_first = null;
-				_last = null;
+		protected function _remove(index as Number|Null, item as ListItem|Null) as Boolean{
+			if(item == null && index != null){
+				// remove based upon index
+				if(index >= 0){
+					item = _items[index];
+				}else{
+					return false;
+				}
 			}
-			_size--;
-
-			if(_current == item){
-				// update current pointer
-				_current = previous;
-			}
-
-			// break links to other items in the list
-			item.previous = null;
-			item.next = null;
+			return (item != null) ? _items.remove(item) : false;
 		}
 
 		public function add(object as Object) as Void{
-			// Adds an item at the end of the list
+			// Adds an item at the end of the array
+			var i = _items.size();
 			var item = createItem(object);
-			_add(item, _last);
-		}
-		public function addAll(array as Array) as Void{
-			for(var i=0; i<array.size(); i++){
-				var item = createItem(array[i] as Object);
-				_add(item, _last);
-			}
+			_add(item, i);
 		}
 		public function remove() as Boolean{
 			// deletes the item at current position at moves the current pointer to the previous
-			if(_current != null){
-				_remove(_current);
+			if(_remove(_index, null)){
+				_index--;
 				return true;
+			}else{
+				return false;
 			}
-			return false;
 		}
 		public function clear() as Void{
-			while(_first != null){
-				_remove(_first);
-			}
-		}
-		public function current() as Object|Null{
-			return (_current != null) ? _current.object : null;
+			_index = -1;
+			_items = [] as Array<ListItem>;
 		}
 		public function previous() as Object|Null{
-			if(_current != null){
-				_current = _current.previous;
+			if(_index > 0){
+				_index--;
+				return _items[_index].object;
+			}else{
+				return null;
 			}
-			return (_current != null) ? _current.object : null;
 		}
 		public function next() as Object|Null{
-			if(_current != null){
-				_current = _current.next;
+			if(_index >= 0){
+				_index++;
+				if(_index < _items.size()){
+					return _items[_index].object;
+				}else{
+					_index = -1;
+				}
 			}
-			return (_current != null) ? _current.object : null;
+			return null;
 		}
 		public function first() as Object|Null{
-			_current = _first;
-			return (_current != null) ? _current.object : null;
+			if(_items.size() > 0){
+				_index = 0;
+				return _items[_index].object;
+			}else{
+				return null;
+			}
 		}
 		public function last() as Object|Null{
-			_current = _last;
-			return (_current != null) ? _current.object : null;
+			_index = _items.size() - 1;
+			if(_index >= 0){
+				return _items[_index].object;
+			}else{
+				return null;
+			}
 		}
 		public function toArray() as Array<Object>{
-			var array = new [_size] as Array<Object>;
-			var item = _first;
-			var i = 0;
-			while(item != null){
-				array[i] = item.object;
-				i++;
-				item = item.next;
+			var count = _items.size();
+			var objects = new Array<Object>[count];
+			for(var i=0; i<count; i++){
+				objects[i] = _items[i].object;
 			}
-			return array;
+			return objects;
 		}
 		public function size() as Number{
-			return _size;
+			return _items.size();
 		}
 		public function insert(object as Object) as Void{
 			var item = createItem(object);
-			_add(item, _current);
+			_add(item, _index);
 		}
 	}
 }
