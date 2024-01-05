@@ -3,6 +3,12 @@ import Toybox.System;
 
 module MyList{
 	class FilteredList extends List{
+		class RankableDummy{
+			function getRankValue(predecessor as Object, successor as Object) as Numeric{
+				return 0f;
+			}
+		}
+
 		// filter based upon evaluation of each item with their relation to the predecescor and successor
 		typedef IRankable as interface{
 			function getRankValue(predecessor as Object, successor as Object) as Numeric;

@@ -3,8 +3,13 @@ import Toybox.Lang;
 
 module MyList{
     class BufferedList extends FilteredList{
+        class ListenerDummy{
+            function onReady(sender as Object) as Void{
+                
+            }
+        }
         typedef IListener as interface{
-            function onReady(sender as Object);
+            function onReady(sender as Object) as Void;
         };
 
         hidden var fifo as List = new MyList.List();
