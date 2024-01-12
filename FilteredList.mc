@@ -1,7 +1,9 @@
 import Toybox.Lang;
 import Toybox.System;
 
-module MyList{
+module MyBarrel{
+    (:lists)
+    module Lists{
 	class FilteredList extends List{
 		// filter based upon evaluation of each item with their relation to the predecescor and successor
 		typedef IRankable as interface{
@@ -186,4 +188,5 @@ module MyList{
 			return (item != null) ? (item as RankedItem).object : null;
 		}
 	}
+}
 }

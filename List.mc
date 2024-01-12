@@ -1,6 +1,8 @@
 import Toybox.Lang;
 
-module MyList{
+module MyBarrel{
+    (:lists)
+    module Lists{
 	class List{
 		// This List will implement the interface IIterator as defined in the module MyGraph
 		hidden var _index as Number = -1;
@@ -65,4 +67,5 @@ module MyList{
 			return _items.size();
 		}
 	}
+}
 }

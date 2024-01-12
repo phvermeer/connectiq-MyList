@@ -1,13 +1,19 @@
 import Toybox.Timer;
 import Toybox.Lang;
 
-module MyList{
+module MyBarrel{
+    (:lists)
+    module Lists{
     class BufferedList extends FilteredList{
         typedef IListener as interface{
-            function onReady(sender as Object);
+            function onReady(sender as Object) as Void;
         };
+        // dummy to introduce symbol "onReady(sender)"
+        class Listener{
+            function onReady(sender as Object) as Void{}
+        }
 
-        hidden var fifo as List = new MyList.List();
+        hidden var fifo as List = new Lists.List();
         hidden var timer as Timer.Timer = new Timer.Timer();
         hidden var loading as Boolean = false;
         hidden var interval as Number;
@@ -96,4 +102,5 @@ module MyList{
             }
         }
     }
+}
 }
